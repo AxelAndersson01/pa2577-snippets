@@ -1,0 +1,47 @@
+# Local development. Service names match the Kubernetes Services,
+# so the same URLs (http://wordfreq:3000 etc.) work in both.
+services:
+  gateway:
+    build: ./gateway
+    image: aggekagge/snippets-gateway:v4
+    command: npx -y nodemon -L src/index.js  # live reload in dev only; images run plain node
+    ports:
+      - "3000:3000"
+    environment:
+      # Dev-only credentials. Kubernetes reads them from a Secret instead.
+      MONGO_URL: mongodb://admin:dev-password@snippets-db:27017/?authSource=admin
+      WORDFREQ_URL: http://wordfreq:3000
+      READABILITY_URL: http://readability:3000
+      
+    volumes:
+      - ./gateway/src:/app/src
+      - ./gateway/public:/app/public
+
+  wordfreq:
+    build: ./wordfreq
+    image: aggekagge/snippets-wordfreq:v4
+    command: npx -y nodemon -L src/index.js  # live reload in dev only; images run plain node
+    volumes:
+      - ./wordfreq/src:/app/src
+    deploy:
+      replicas: 3
+
+  readability:
+    build: ./readability
+    image: aggekagge/snippets-readability:v4
+    command: npx -y nodemon -L src/index.js  # live reload in dev only; images run plain node
+    volumes:
+      - ./readability/src:/app/src
+    deploy:
+      replicas: 3
+
+  snippets-db:
+    image: mongo:7.0
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: dev-password
+    volumes:
+      - snippets-data:/data/db
+
+volumes:
+  snippets-data:

@@ -1,0 +1,235 @@
+# Snippets: gateway + 2 worker types + MongoDB.
+# Deploy:  kubectl apply -f kubernetes.yaml
+# Remove:  kubectl delete namespace snippets   (the database volume is deleted too)
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: snippets
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: snippets-db-credentials
+  namespace: snippets
+type: Opaque
+stringData:
+  username: admin
+  password: ChangeMe123   
+---
+# ---------------------------------------------------------------- gateway
+# Reachable form the outside
+# LoadBalancer: Docker Desktop publishes it on http://localhost:3000.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway
+  namespace: snippets
+spec:
+  type: LoadBalancer
+  selector:
+    app: gateway
+  ports:
+    - port: 3000
+      targetPort: 3000
+      nodePort: 30080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gateway
+  namespace: snippets
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gateway
+  template:
+    metadata:
+      labels:
+        app: gateway
+    spec:
+      containers:
+        - name: gateway
+          image: aggekagge/snippets-gateway:v4
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef: { name: snippets-db-credentials, key: username }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: snippets-db-credentials, key: password }
+            # $(VAR) is filled in by Kubernetes from the variables above.
+            - name: MONGO_URL
+              value: mongodb://$(DB_USER):$(DB_PASSWORD)@snippets-db:27017/?authSource=admin
+            - name: WORDFREQ_URL
+              value: http://wordfreq:3000
+            - name: READABILITY_URL
+              value: http://readability:3000
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          # Ready = the database answers; until then the pod gets no traffic.
+          readinessProbe:
+            httpGet: { path: /health, port: 3000 }
+            periodSeconds: 5
+          # Alive = the process answers. Not /health: a database outage
+          # should not make Kubernetes restart every gateway.
+          livenessProbe:
+            tcpSocket: { port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# ---------------------------------------------------------------- wordfreq
+apiVersion: v1
+kind: Service
+metadata:
+  name: wordfreq
+  namespace: snippets
+spec:
+  type: ClusterIP   # internal only
+  selector:
+    app: wordfreq
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wordfreq
+  namespace: snippets
+spec:
+  replicas: 3 #start with
+  selector:
+    matchLabels:
+      app: wordfreq
+  template:
+    metadata:
+      labels:
+        app: wordfreq
+    spec:
+      containers:
+        - name: wordfreq
+          image: aggekagge/snippets-wordfreq:v4
+          ports:
+            - containerPort: 3000
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          readinessProbe:
+            httpGet: { path: /health, port: 3000 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# ---------------------------------------------------------------- readability
+apiVersion: v1
+kind: Service
+metadata:
+  name: readability
+  namespace: snippets
+spec:
+  type: ClusterIP   # internal only
+  selector:
+    app: readability
+  ports:
+    - port: 3000
+      targetPort: 3000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: readability
+  namespace: snippets
+spec:
+  replicas: 3 #start here
+  selector:
+    matchLabels:
+      app: readability
+  template:
+    metadata:
+      labels:
+        app: readability
+    spec:
+      containers:
+        - name: readability
+          image: aggekagge/snippets-readability:v4
+          ports:
+            - containerPort: 3000
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 256Mi }
+          readinessProbe:
+            httpGet: { path: /health, port: 3000 }
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# ---------------------------------------------------------------- database
+# Headless Service (clusterIP: None): gives the StatefulSet pod a stable DNS name.
+apiVersion: v1
+kind: Service
+metadata:
+  name: snippets-db
+  namespace: snippets
+spec:
+  clusterIP: None
+  selector:
+    app: snippets-db
+  ports:
+    - port: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: snippets-db
+  namespace: snippets
+spec:
+  serviceName: snippets-db
+  replicas: 1   # not scaled 
+  selector:
+    matchLabels:
+      app: snippets-db
+  template:
+    metadata:
+      labels:
+        app: snippets-db
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:7.0
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef: { name: snippets-db-credentials, key: username }
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: snippets-db-credentials, key: password }
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 1Gi }
+          readinessProbe:
+            tcpSocket: { port: 27017 }
+            periodSeconds: 5
+  # Each pod gets its own PersistentVolumeClaim. It outlives the pod,
+  # so the data survives `kubectl delete pod` and cluster restarts. Cool
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

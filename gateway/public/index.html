@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Snippets</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Snippets</h1>
+
+<h2>Add a snippet</h2>
+<form id="add">
+  <input name="title" placeholder="Title" maxlength="100" required>
+  <textarea name="text" placeholder="Paste some text…" maxlength="50000" required></textarea>
+  <button>Save</button>
+</form>
+
+<h2>Saved snippets</h2>
+<ul id="list"></ul>
+
+<h2>Analysis</h2>
+<button id="analyse">Analyse all snippets</button>
+<p id="summary"></p>
+<table id="results"></table>
+
+<script src="app.js"></script>
+</body>
+</html>
