@@ -1,7 +1,5 @@
 #!/bin/sh
 # Build and push all images to Docker Hub. Run from the repo root:
-#   sh pushImages.sh        -> tags :v1
-#   sh pushImages.sh v2     -> tags :v2
 set -e
 
 DOCKER_USER=aggekagge

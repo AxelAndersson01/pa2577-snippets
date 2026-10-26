@@ -6,19 +6,19 @@ PA2577 Applied Cloud Computing and Big Data, BTH. A microservice application dep
 
 It is a small web app for storing pieces of text and analysing them basically.
 
-The user opens the web page and saves **snippets**. A snippet is a title plus some text: a paragraph or really anything. The saved snippets are listed on the page and can be deleted.
+The user opens the web page and saves what I chose to call snippets. A snippet is a title plus some text, a paragraph or really anything. The saved snippets are listed on the page and can be deleted.
 
 When the user clicks **"Analyse all snippets"** the application analyses every stored snippet and then shows:
 
 - **Word frequency.** How often each word appears. The counts from all snippets are added together into a **top-10 list of the most used words** .
-- **Readability.** A **Flesch reading-ease score** for each snippet, from 0 (very hard to read) to 100 (very easy) and the average score from all snippets
-- **Per-snippet results.** A table with each snippet's word count and score, and the name of the **worker pod that processed it**. Just to make it vissible that the work is spread
+- **Readability.** A **Flesch reading-ease score** for each snippet, from 0 (hard to read) to 100 (easy) and the average score from all snippets
+- **Per-snippet results.** A table with each snippets word count and score and the name of the **worker pod that processed it**. Just to make it vissible that the work is spread
 
 
 
 ### Who would use it
 
-The intended user is a **content or documentation team** for example: people who write help articles, product descriptions or course material and want to check two things. Is the text easy enough for the people who will read it and are some words overused?
+The intended user is a **content or maybe documentation team** for example: people who write help articles, product descriptions or course material and want to check two things. Is the text easy enough for the people who will read it and are some words overused?
 They paste in their texts, and the app tells them which ones are hard to read and which words dominate.
 
 ### How it is built
@@ -75,8 +75,8 @@ Neither needs to grow the way the workers do.
 
 | Challenge | Done | Could be done |
 |---|---|---|
-| More parts to run and debug | Logs per service with `kubectl logs -l app=<name>`, pod names shown in the results | Central logging/monitoring |
-| Database is a single point of failure | Persistent volume, readiness probe | MongoDB replica set |
+| More parts to run and debug | Logs per service with `kubectl logs -l app=<name>`, pod names shown in the results | Central logging |
+| Database is a single point of failure | Persistent volume | MongoDB replica set |
 | Thousands of parallel requests | 5 s timeout, a failed snippet doesn't break the analysis | Concurrency limit or batching |
 | Idle replicas cost money | CPU/memory requests and limits | Autoscaling |
 
@@ -97,13 +97,13 @@ Neither needs to grow the way the workers do.
 
 ```sh
 kubectl apply -f kubernetes.yaml
-kubectl get pods -n snippets          # wait until all are Running
+kubectl get pods -n snippets         
 # open http://localhost:3000 (other clusters: http://<node-ip>:30080)
 ```
 
 **Logs:** `kubectl logs -n snippets -l app=<gateway|wordfreq|readability> -f`
 
-**Remove everything:** `kubectl delete namespace snippets` (this deletes the stored data too)
+**Remove everything:** `kubectl delete namespace snippets` 
 
 **Docker Compose** (local development, stop the Kubernetes deployment first since both use port 3000):
 
