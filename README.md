@@ -69,7 +69,7 @@ Neither needs to grow the way the workers do.
 - **Scale only the bottleneck.** Each service has its own Deployment, so you only pay for extra copies of the slow part.
 - **Scaling actually helps.** One request per snippet, spread over the worker pods by the Service.
 - **Stateless workers.** A crashed worker loses nothing. The DB keeps data on a persistent volume.
-- **Portable.** Plain Kubernetes YAML runs on any cloud or on-premises, so there is no vendor lock-in.
+- **Portable.** Plain Kubernetes YAML runs on any cloud or on-premises.
 
 ### Challenges
 
@@ -77,7 +77,7 @@ Neither needs to grow the way the workers do.
 |---|---|---|
 | More parts to run and debug | Logs per service with `kubectl logs -l app=<name>`, pod names shown in the results | Central logging |
 | Database is a single point of failure | Persistent volume | MongoDB replica set |
-| Thousands of parallel requests | 5 s timeout, a failed snippet doesn't break the analysis | Concurrency limit or batching |
+| Thousands of parallel requests | 5 s timeout, a failed snippet does not break the analysis | Concurrency limit or batching |
 | Idle replicas cost money | CPU/memory requests and limits | Autoscaling |
 
 ### Security
