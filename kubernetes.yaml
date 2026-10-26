@@ -51,7 +51,7 @@ spec:
     spec:
       containers:
         - name: gateway
-          image: aggekagge/snippets-gateway:v4
+          image: aggekagge/snippets-gateway:v5
           ports:
             - containerPort: 3000
           env:
@@ -113,7 +113,7 @@ spec:
     spec:
       containers:
         - name: wordfreq
-          image: aggekagge/snippets-wordfreq:v4
+          image: aggekagge/snippets-wordfreq:v5
           ports:
             - containerPort: 3000
           resources:
@@ -158,7 +158,7 @@ spec:
     spec:
       containers:
         - name: readability
-          image: aggekagge/snippets-readability:v4
+          image: aggekagge/snippets-readability:v5
           ports:
             - containerPort: 3000
           resources:

@@ -6,10 +6,22 @@ const MONGO_URL = process.env.MONGO_URL ?? 'mongodb://localhost:27017';
 const WORDFREQ_URL = process.env.WORDFREQ_URL ?? 'http://localhost:3001';
 const READABILITY_URL = process.env.READABILITY_URL ?? 'http://localhost:3002';
 
-// The driver connects on first use and reconnects by itself,
-// so the gateway can start before MongoDB is up 
-const db = new MongoClient(MONGO_URL).db('snippets');
+const client = new MongoClient(MONGO_URL);
+const db = client.db('snippets');
 const snippets = db.collection('snippets');
+
+// Retry until MongoDB answers, so the pods can start in any order.
+// If the first connect fails the driver stays closed for good, it does not retry by itself.
+async function connectDb() {
+  try {
+    await client.connect();
+    console.log('connected to MongoDB');
+  } catch (err) {
+    console.error(`MongoDB not reachable (${err.message}), retrying in 2 s`);
+    setTimeout(connectDb, 2000);
+  }
+}
+connectDb();
 
 const app = express();
 app.use(express.json());
